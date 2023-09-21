@@ -2,7 +2,7 @@ import requests
 import time
 import datetime
 
-CALENDAR = "https://timetable.york.ac.uk/ical?650b0ed0&group=false&timetable=!MjAyMyF0ZXJtdGltZW5nX2NvdXJzZSEwMDA2LUNPSE9SVA==&eu=dHFiNTEwQHlvcmsuYWMudWs=&h=DT1kB2AiHheC3bhrhSgUpHMdfzS8pxICn_jsLPs2x0E="
+CALENDAR = "https://timetable.york.ac.uk/ical?650b2316&group=false&eu=dHFiNTEwQHlvcmsuYWMudWs=&h=oU129mL-rNfZBhQ8jwKQO_x9X_ro1bvph-F6ZNRhxvw="
 
 
 def check_refresh(filepath, timeout=3600):
@@ -13,6 +13,9 @@ def check_refresh(filepath, timeout=3600):
 
     with open(filepath, "r") as f:
         content = f.read(32)
+
+    if not content.startswith("LASTREFRESH "):
+        return True
 
     content = content.split("\n")[0].strip("LASTREFRESH ")
     last_refresh = float(content)
@@ -32,17 +35,6 @@ def refresh_calendar(filepath, calendar_url):
         f.write(calendar_content)
 
     return True
-
-
-# def decode_datetime(dt):
-#     year = int(dt[:4]) - 1977
-#     month = int(dt[4:6])
-#     day = int(dt[6:8])
-#     hour = int(dt[9:11])
-#     minute = int(dt[11:13])
-#     second = int(dt[13:15])
-#
-#     return year * 31536000 + month * 2592000 + day * 86400 + hour * 3600 + minute * 60 + second
 
 
 class Event:
@@ -102,6 +94,10 @@ class Event:
 
                 elif last_token == "status":
                     self.status += token[1:]
+
+    @property
+    def uid(self):
+        return str.__hash__()
 
 class Calendar:
     def __init__(self, calendar_path):
@@ -208,7 +204,7 @@ class Calendar:
                 .replace("\\,", ",") \
                 .strip()
 
-    def events_on_day(self, day: datetime.date):
+    def events_on_day(self, day: datetime.date) -> list[Event]:
         for event in self.events:
             if event.start_time.date() == day:
                 yield event
