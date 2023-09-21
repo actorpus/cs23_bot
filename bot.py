@@ -42,11 +42,11 @@ async def on_ready():
         await asyncio.sleep(60)
 
 
-@bot.command()
+@bot.command(aliases=["h"])
 async def help(ctx):
     await ctx.send(HELP_MESSAGE)
 
-@bot.command()
+@bot.command(alias=["t", "td", "timetable"])
 async def today(ctx, *, date=datetime.date.today(), datef="Today"):
     # written for extra commands like tomorrow, fd, monday, tuesday, ect to just swap out the
     # date check and formatting of datef
@@ -74,31 +74,12 @@ async def today(ctx, *, date=datetime.date.today(), datef="Today"):
     await ctx.send(response)
 
 
-@bot.command()
+@bot.command(alias=["tm", "tmr"])
 async def tomorrow(ctx):
     await today(ctx, date=datetime.date.today() + datetime.timedelta(days=1), datef="Tomorrow")
 
-@bot.command()
-async def t(ctx):
-    # shorthand for today
-    await today(ctx)
 
-@bot.command()
-async def td(ctx):
-    # shorthand for today
-    await today(ctx)
-
-@bot.command()
-async def timetable(ctx):
-    # shorthand for today
-    await today(ctx)
-
-@bot.command()
-async def tmr(ctx):
-    # shorthand for tomorrow
-    await tomorrow(ctx)
-
-@bot.command()
+@bot.command(alias=["d", "dts"])
 async def details(ctx, uid: str):
     date = datetime.date.today()
     target_day = datetime.datetime.strptime(f"{date.year}{date.month}{uid[1:]}", "%Y%m%d")

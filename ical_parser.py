@@ -95,10 +95,6 @@ class Event:
                 elif last_token == "status":
                     self.status += token[1:]
 
-    @property
-    def uid(self):
-        return str.__hash__()
-
 class Calendar:
     def __init__(self, calendar_path):
         self.path: str = calendar_path
