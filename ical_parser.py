@@ -1,15 +1,19 @@
-import requests
-import time
 import datetime
+import time
+import requests
+from utils import *
+import os
 
-CALENDAR = "https://timetable.york.ac.uk/ical?650b2316&group=false&eu=dHFiNTEwQHlvcmsuYWMudWs=&h=oU129mL-rNfZBhQ8jwKQO_x9X_ro1bvph-F6ZNRhxvw="
-
+CALENDAR = Settings["calendar_url"]
 
 def check_refresh(filepath, timeout=3600):
     """
     Checks the last refresh time of the calendar
     :return:
     """
+
+    if not os.path.exists(filepath):
+        open(filepath, "w").close()
 
     with open(filepath, "r") as f:
         content = f.read(32)
@@ -81,8 +85,6 @@ class Event:
                 if last_token is None:
                     raise ValueError("Invalid calendar file. Unknown token.")
 
-                # last_token += token[1:]
-
                 if last_token == "summary":
                     self.summary += token[1:]
 
@@ -94,6 +96,43 @@ class Event:
 
                 elif last_token == "status":
                     self.status += token[1:]
+
+    def hash(self):
+        return hash((
+            self.start_time,
+            self.end_time,
+            self.summary,
+            self.description,
+            self.location,
+            self.status
+        ))
+
+    def length(self):
+        return self.end_time - self.start_time
+
+    def difference_with(self, other):
+        other: Event
+        differences = []
+
+        if self.start_time != other.start_time:
+            differences.append("start_time")
+
+        if self.end_time != other.end_time:
+            differences.append("end_time")
+
+        if self.summary != other.summary:
+            differences.append("summary")
+
+        if self.description != other.description:
+            differences.append("description")
+
+        if self.location != other.location:
+            differences.append("location")
+
+        if self.status != other.status:
+            differences.append("status")
+
+        return differences
 
 class Calendar:
     def __init__(self, calendar_path):
@@ -207,26 +246,29 @@ class Calendar:
 
 
 if __name__ == '__main__':
-    if check_refresh("york.ics"):
+    fp = Settings["calendar_file"]
+
+    if check_refresh(fp):
         print("Refreshing calendar...")
-        refresh_calendar("york.ics", CALENDAR)
+        refresh_calendar(fp, CALENDAR)
     else:
         print("Calendar up to date.")
 
     print("Loading calendar...")
-    calendar = Calendar("york.ics")
+    calendar = Calendar(fp)
 
     today = datetime.date.today()
-    print("\n\n\nEvents today:")
-    for event in calendar.events_on_day(today):
+    print("\n\n\nEvents tomorrow:")
+    for event in calendar.events_on_day(today + datetime.timedelta(days=1)):
         print("\033[1m", event.summary, "\033[0m")
 
         if event.location:
-            print("Location:", event.location)
+            print("Location:", str_fixed_length(event.location, 60))
 
         if event.start_time.date() == event.end_time.date():
-            print("Date:", event.start_time.date(),
-                  "Time:", event.start_time.time(), "-", event.end_time.time())
+            print("Date:", event.start_time.date())
+            print("Times:", event.start_time.time(), "-", event.end_time.time())
+            print("Length:", event.length())
 
         else:
             print("Start:", event.start_time.date(), event.start_time.time())

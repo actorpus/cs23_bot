@@ -4,6 +4,7 @@ import discord
 from discord.ext import commands
 from ical_parser import Event, Calendar, check_refresh, refresh_calendar, CALENDAR
 import datetime
+from utils import *
 
 
 HELP_MESSAGE = """
@@ -19,17 +20,17 @@ bot = commands.Bot(
     intents=discord.Intents.all()
 )
 bot.remove_command('help')
+calendar = Calendar(Settings["calendar_file"])
 
-calendar = Calendar("york.ics")
 
+async def update_calendar(fp):
 
-async def update_calendar():
-    if not check_refresh("york.ics"):
+    if not check_refresh(fp):
         return
 
-    refresh_calendar("york.ics", CALENDAR)
+    refresh_calendar(fp, CALENDAR)
     # the most stupid thing I've ever done
-    calendar.__init__("york.ics")
+    calendar.__init__(fp)
 
 
 @bot.event
@@ -38,7 +39,7 @@ async def on_ready():
 
     # cursed code, if you understand asyncio loops feel free to change
     while True:
-        await update_calendar()
+        await update_calendar(fp = Settings["calendar_file"])
         await asyncio.sleep(60)
 
 
