@@ -1,6 +1,7 @@
 import requests
 import time
 import datetime
+import os.path
 
 CALENDAR = "https://timetable.york.ac.uk/ical?650b2316&group=false&eu=dHFiNTEwQHlvcmsuYWMudWs=&h=oU129mL-rNfZBhQ8jwKQO_x9X_ro1bvph-F6ZNRhxvw="
 
@@ -10,7 +11,9 @@ def check_refresh(filepath, timeout=3600):
     Checks the last refresh time of the calendar
     :return:
     """
-
+    if not os.path.exists(filepath):
+        open(filepath, "wb").close()
+        
     with open(filepath, "r") as f:
         content = f.read(32)
 
