@@ -4,12 +4,13 @@ import requests
 from utils import *
 import os
 
+Settings = Settings("alex")
+
 CALENDAR = Settings["calendar_url"]
 
 def check_refresh(filepath, timeout=3600):
     """
     Checks the last refresh time of the calendar
-    :return:
     """
 
     if not os.path.exists(filepath):
@@ -107,6 +108,12 @@ class Event:
             self.status
         ))
 
+    def __str__(self):
+        return f"Event({self.summary})"
+
+    def __repr__(self):
+        return f"<Event \"{str_max_length_cutoff(self.summary, 24)}\">"
+
     def length(self):
         return self.end_time - self.start_time
 
@@ -139,13 +146,13 @@ class Calendar:
         self.path: str = calendar_path
         self.version: str
         self.prodid: str
-        self.calname: str
+        self.cal_name: str
         self.events: list[Event] = []
 
         self._load_calendar()
 
     def _load_calendar(self):
-        with open(self.path, "r") as f:
+        with open(self.path, "r", encoding="UTF-8") as f:
             cal = f.read()
 
         refresh_time, *cal = cal.strip().split("\n")
@@ -187,7 +194,7 @@ class Calendar:
 
         self.version = None
         self.prodid = None
-        self.calname = None
+        self.cal_name = None
 
         tokens = iter(tokens)
 
@@ -206,15 +213,15 @@ class Calendar:
                 print("Found ProdID: ", self.prodid)
 
             elif token.startswith("X-WR-CALNAME:"):
-                self.calname = token.lstrip("X-WR-CALNAME:")
-                print("Found Calendar Name: ", self.calname)
+                self.cal_name = token.lstrip("X-WR-CALNAME:")
+                print("Found Calendar Name: ", self.cal_name)
 
             elif token.startswith("BEGIN:"):
-                identifyer = token.lstrip("BEGIN:")
-                # print(f"Found section {identifyer.lower()}")
+                identifier = token.lstrip("BEGIN:")
+                # print(f"Found section {identifier.lower()}")
 
-                section = self._seperate_section(tokens, identifyer)
-                self._handle_section(identifyer, section)
+                section = self._seperate_section(tokens, identifier)
+                self._handle_section(identifier, section)
 
             else:
                 print("Unknown token: ", token)
@@ -257,21 +264,62 @@ if __name__ == '__main__':
     print("Loading calendar...")
     calendar = Calendar(fp)
 
-    today = datetime.date.today()
-    print("\n\n\nEvents tomorrow:")
-    for event in calendar.events_on_day(today + datetime.timedelta(days=1)):
-        print("\033[1m", event.summary, "\033[0m")
+    events = list(calendar.events_on_day(datetime.date.today()))
 
-        if event.location:
-            print("Location:", str_fixed_length(event.location, 60))
+    day_start = min(events, key=lambda e: e.start_time).start_time - datetime.timedelta(minutes=30)
+    day_end = max(events, key=lambda e: e.end_time).end_time + datetime.timedelta(minutes=30)
+    day_length = (day_end - day_start).total_seconds() / (60 * 15)
 
-        if event.start_time.date() == event.end_time.date():
-            print("Date:", event.start_time.date())
-            print("Times:", event.start_time.time(), "-", event.end_time.time())
-            print("Length:", event.length())
+    # 15m per line
 
+    splices = []
+
+    for i in range(int(day_length)):
+        splices.append([
+            event_i
+            for event_i, e in enumerate(events)
+            if e.start_time <= day_start + datetime.timedelta(minutes=15 * i) < e.end_time
+        ])
+
+    needed_width = len(max(splices, key=lambda s: len(s)))
+
+    # add the width multiplier (un-normalised)
+    splices = [
+        (0, []) if not s else (needed_width / len(s), s) for s in splices
+    ]
+    # normalised (ensures events do not change length)
+    splices = [
+        (0, []) if not s[0] else
+        (min(filter(lambda x: x[1] == s[1], splices), key=lambda x: x[0])[0], s[1])
+        for s in splices
+    ]
+
+    STANDARD_WIDTH = 40
+
+    rendered_events = [
+        str_fixed_length(
+            f"{e.summary} @ {e.location}",
+            int(STANDARD_WIDTH * list(filter(lambda x: i in x[1], splices))[0][0]) - 4,
+            line_nbr=int(e.length().total_seconds() / (60 * 15))
+        ).split("\n") for i, e in enumerate(events)
+    ]
+
+    print("Finished visual reconstruction")
+
+    for i, (_, es) in enumerate(splices):
+        tt = (day_start + datetime.timedelta(minutes=i * 15)).time()
+
+        if tt.minute != 0:
+            rendered_time = f"  :{tt.minute!s:2}"
         else:
-            print("Start:", event.start_time.date(), event.start_time.time())
-            print("End:", event.end_time.date(), event.end_time.time())
+            rendered_time = f"{tt.hour!s:>2}:{tt.minute!s:>02}"
+
+        print(rendered_time, end=" ")
+        for e in es:
+            pos = len(list(filter(lambda x: e in x[1], splices[:i])))
+            rt = ["┌┐", "││"][bool(pos)]
+            # rt = ["/\\", "||"][bool(pos)]
+
+            print(f"{rt[0]} {rendered_events[e][pos]} {rt[1]}", end="")
 
         print()

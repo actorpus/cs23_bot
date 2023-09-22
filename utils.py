@@ -6,17 +6,16 @@ def str_max_length_cutoff(input: str, max_length: int):
     else:
         return input
 
-def str_fixed_length(input: str, length: int):
-    if len(input) < length:
-        return input + (" " * (length - len(input)))
+def str_fixed_length(input: str, length: int, line_nbr: int = 0):
+    # if len(input) < length:
+    #     return input + (" " * (length - len(input)))
 
     lines = []
 
     while input:
         if len(input) < length:
             lines.append(input + (" " * (length - len(input))))
-            input = ""
-            continue
+            break
 
         if " " not in input[:length]:
             lines.append(input[:length - 1] + "-")
@@ -26,7 +25,14 @@ def str_fixed_length(input: str, length: int):
         cut = input[:length].rfind(" ")
         part, input = input[:cut], input[cut + 1:]
 
+        if line_nbr and len(lines) == line_nbr - 1:
+            part = part[:length - 3] + "..."
+            input = ""
+
         lines.append(part + (" " * (length - len(part))))
+
+    if line_nbr:
+        return "\n".join(lines) + ("\n" + " " * length) * (line_nbr - len(lines))
 
     return "\n".join(lines)
 
@@ -41,18 +47,15 @@ class Settings():
 
     """
 
-    def __init__(self):
+    def __init__(self, user):
         with open("settings.json", "r") as f:
-            self._settings = json.load(f)
+            self._settings = json.load(f)[user]
 
     def get(self, key):
         return self._settings[key]
 
     def __getitem__(self, item):
         return self._settings[item]
-
-Settings = Settings()
-
 
 IPSUM_PARAGRAPH = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut " \
                   "labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris " \
@@ -70,3 +73,6 @@ if __name__ == '__main__':
     print()
     print("str_fixed_length 64")
     print(str_fixed_length(IPSUM_PARAGRAPH, 64))
+    print()
+    print("str_fixed_length 64 3")
+    print(str_fixed_length(IPSUM_PARAGRAPH, 64, 3))
